@@ -1,4 +1,5 @@
 from utils.scraper import get_all_links
+#from object import object
 
 def main():
     target = ""
