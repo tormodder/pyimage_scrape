@@ -1,14 +1,23 @@
 import requests
 import sys
+import logging
 from bs4 import BeautifulSoup
 
 class Scraper:
-    def __init__(self, name):
+    def __init__(self, name, log_level=logging.DEBUG):
         self.name = name
         self._target = ""
         self._url = ""
-        # Add attributes to init
-        # self._private = ???
+        # Set up logger for this instance
+        self.logger = logging.getLogger(f"Scraper-{name}")
+
+        if not self.logger.hasHandlers():  # Avoid duplicate handlers in multiple instances
+            handler = logging.StreamHandler()
+            formatter = logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+            handler.setFormatter(formatter)
+            self.logger.addHandler(handler)
+
+        self.logger.setLevel(log_level)
     
     @property
     def url(self):
@@ -34,7 +43,7 @@ class Scraper:
     def __connect_and_soupify(self, url:str) -> BeautifulSoup:
         re = requests.get(url)
         if re.status_code != 200:
-            sys.stderr.write("Error getting web page.")
+            logging.error("Error getting web page.")
             exit(-1)
 
         return BeautifulSoup(re.text, 'html.parser')
@@ -89,6 +98,7 @@ class Scraper:
         soup = self.__connect_and_soupify(self.url)
 
         links_to_visit = self.__get_links_from_same_domain(soup, self.url)
+        self.logger.info(f"Found {len(links_to_visit)} links to scrape.")
 
         for link in links_to_visit:
             (image, text) = self.__scrape_one_page(link)

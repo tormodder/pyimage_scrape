@@ -1,14 +1,13 @@
-from utils.scraper import get_all_links
-#from object import object
+from utils.Scraper import Scraper
 
 def main():
-    target = ""
+    target = "https://pelleohlinmorbidmayhem.blogspot.com/"
     output_dir = "output/images"
     
-    links = get_all_links(target)
+    scraper = Scraper("debug")
+    scraper.url = target
 
-    for i in links:
-        print(i)
+    scraper.scrape()
 
 if __name__ == "__main__":
     main()
