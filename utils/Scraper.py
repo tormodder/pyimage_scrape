@@ -1,6 +1,7 @@
 import requests
 import sys
 import logging
+import os
 from bs4 import BeautifulSoup
 
 class Scraper:
@@ -72,22 +73,34 @@ class Scraper:
     # Page scraping
     ######
     def __scrape_one_page(self, link: str) -> tuple[str, str]:
-         
 
-        return ("", "")
-            # This is where the bs4 stuff happens
+        soup = self.__connect_and_soupify(link)
+        img = self.__get_links_to_pictures(soup, link)
 
-    def __get_image(self, link: str) -> str:
-        return ""
+         #TODO find subsequent text
+         #      store subsequent text
+        txt = ""
 
-    def __get_image_text(self, link: str) -> str:
-        return ""
+        return (img, txt)
+
     
     #TODO: Implement downloader.py
-    #    def __downloader(self, text_image: tuple(str)):
-        # This function should take a tuple: image and text (both strings)
-        # and then download the content
-        # and put it in the target folder
+    def __downloader(self, text_image: tuple[str, str]):
+        img = text_image[0]
+        txt = text_image[1]
+
+        # Remove when txt is found
+        file_name = os.path.basename(img)
+        file_path = os.path.join(self.target, file_name)
+
+        self.logger.info(f"Downloading file {file_name}")
+        
+        img_data = requests.get(img).content
+        with open(file_path, "wb") as f:
+            f.write(img_data)
+
+
+
 
     #public methods
     def scrape(self):
@@ -101,11 +114,13 @@ class Scraper:
         self.logger.info(f"Found {len(links_to_visit)} links to scrape.")
 
         for link in links_to_visit:
-            (image, text) = self.__scrape_one_page(link)
+            if self.logger.isEnabledFor(logging.DEBUG):
+                self.logger.debug(f"{link}\n")
 
-        if self.logger.isEnabledFor(logging.DEBUG):
-            for link in links_to_visit:
-                self.logger.debug(f"{links_to_visit}\n")
+           # (image, text) = self.__scrape_one_page(link)
+            self.__downloader(self.__scrape_one_page(link))
+
+
 """
     TODO
     the program should:
