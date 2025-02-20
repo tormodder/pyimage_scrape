@@ -103,7 +103,9 @@ class Scraper:
         for link in links_to_visit:
             (image, text) = self.__scrape_one_page(link)
 
-   
+        if self.logger.isEnabledFor(logging.DEBUG):
+            for link in links_to_visit:
+                self.logger.debug(f"{links_to_visit}\n")
 """
     TODO
     the program should:
