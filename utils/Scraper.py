@@ -3,7 +3,10 @@ import sys
 import logging
 import os
 from bs4 import BeautifulSoup
+from bs4 import XMLParsedAsHTMLWarning
+import warnings
 
+warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 class Scraper:
     def __init__(self, name, log_level=logging.DEBUG):
         self.name = name
@@ -46,8 +49,13 @@ class Scraper:
         if re.status_code != 200:
             logging.error("Error getting web page.")
             exit(-1)
+        elif re.text.startswith("<?xml"):
+            logging.error("Page is xml. Skipping...")
+            return None
 
-        return BeautifulSoup(re.text, 'html.parser')
+        soup = BeautifulSoup(re.text, 'html.parser')
+
+        return soup
 
 
     def __get_links_from_same_domain(self, soup: BeautifulSoup, url: str) -> list[str]:
@@ -75,6 +83,10 @@ class Scraper:
     def __scrape_one_page(self, link: str) -> tuple[str, str]:
 
         soup = self.__connect_and_soupify(link)
+        if not soup:
+            self.logger.error("xml skpped from scraper function")
+            return ("", "")
+    
         img = self.__get_links_to_pictures(soup, link)
 
          #TODO find subsequent text
@@ -89,6 +101,10 @@ class Scraper:
         img = text_image[0]
         txt = text_image[1]
 
+        if not img and not txt:
+            self.logger.error("No image or text found.")
+            return
+        
         # Remove when txt is found
         file_name = os.path.basename(img)
         file_path = os.path.join(self.target, file_name)
