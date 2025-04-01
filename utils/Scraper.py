@@ -5,6 +5,7 @@ import os
 from PIL import Image
 import piexif
 from urllib.parse import urlparse
+from urllib.request import urlopen
 from bs4 import BeautifulSoup
 from bs4 import XMLParsedAsHTMLWarning
 import warnings
@@ -77,16 +78,15 @@ class Scraper:
         """
         base_domain = urlparse(url).netloc
         # TODO: We need to get the text somewhere here
+        # Break up the list comprehension into a for loop
         return [
             href for link in soup.find_all("a") 
             if (href := link.get("href")) and urlparse(href).netloc != base_domain
         ]
     
-    #TODO: Find text-picture combinations
-         #TODO: Add text to picture metadata
-    #TODO: Create folder based on <h3> tags
-        #TODO: Name picture after folder name: "<h3>_1.jpg", "<h3>_2.jpg" etc.
-
+    def __get_image_text(self, soup: BeautifulSoup) -> str:
+        #TODO: Find the text that is associated with the image
+        return 
 
     #####
     # Page scraping
@@ -101,16 +101,17 @@ class Scraper:
             return None
     
         img_txt = self.__get_links_to_pictures(soup, link)
+        pagename = soup.find("h3").text if soup.find("h3") else "" #TODO: parse <h3> tag for pagename
 
          #TODO find subsequent text
          #      store subsequent text
         txt = [""] * len(img_txt) #placeholder for txt
 
 
-        return list(zip(img_txt, txt))
+        return list(zip(img_txt, txt, pagename.strip()))
 
-    
-    def __downloader(self, text_image: list[tuple[str, str]]) -> None:
+    #TODO: This has to take in list[tuple[str, str, str]] where the last str is the pagename
+    def __downloader(self, text_image: list[tuple[str, str, str]]) -> None:
         """
         Downloads a single image, gives it a name and stores it in the target directory
         :param text_image: tuple of (image_link, name_of_image)
@@ -129,7 +130,11 @@ class Scraper:
             self.logger.info(f"Downloading file {file_name}")
 
             try: 
-                img_data = requests.get(img).content
+                img_data = Image.open(urlopen(img))
+                # TODO: add text to image metadata
+                #TODO: Create folder based on <h3> tags
+                #TODO: Name picture after folder name: "<h3>_1.jpg", "<h3>_2.jpg" etc.
+
                 with open(file_path, "wb") as f:
                     f.write(img_data)
 
