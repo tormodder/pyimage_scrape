@@ -2,6 +2,8 @@ import requests
 import sys
 import logging
 import os
+from PIL import Image
+import piexif
 from urllib.parse import urlparse
 from bs4 import BeautifulSoup
 from bs4 import XMLParsedAsHTMLWarning
@@ -74,36 +76,40 @@ class Scraper:
         used to get picture links
         """
         base_domain = urlparse(url).netloc
+        # TODO: We need to get the text somewhere here
         return [
             href for link in soup.find_all("a") 
             if (href := link.get("href")) and urlparse(href).netloc != base_domain
         ]
+    
+    #TODO: Find text-picture combinations
+         #TODO: Add text to picture metadata
+    #TODO: Create folder based on <h3> tags
+        #TODO: Name picture after folder name: "<h3>_1.jpg", "<h3>_2.jpg" etc.
+
 
     #####
     # Page scraping
     ######
-    def __scrape_one_page(self, link: str) -> tuple[str, str]:
+    def __scrape_images(self, link: str) -> tuple[str, str]:
         """
         gets all the specified links on one single page
         """
-        
-
         soup = self.__connect_and_soupify(link)
         if not soup:
-            self.logger.error("xml skpped from scraper function")
+            self.logger.error("xml skipped from scraper function")
             return None
     
-        img = self.__get_links_to_pictures(soup, link)
+        img_txt = self.__get_links_to_pictures(soup, link)
 
          #TODO find subsequent text
          #      store subsequent text
-        txt = [""] * len(img) #placeholder for txt
+        txt = [""] * len(img_txt) #placeholder for txt
 
 
-        return list(zip(img, txt))
+        return list(zip(img_txt, txt))
 
     
-    #TODO: Implement downloader.py
     def __downloader(self, text_image: list[tuple[str, str]]) -> None:
         """
         Downloads a single image, gives it a name and stores it in the target directory
@@ -126,6 +132,7 @@ class Scraper:
                 img_data = requests.get(img).content
                 with open(file_path, "wb") as f:
                     f.write(img_data)
+
             except MissingSchema:
                 self.logger.error(f"Invalid URL: {img}")
                 continue
@@ -133,15 +140,8 @@ class Scraper:
                 self.logger.error(f"Error downloading {img}: {e}")
                 continue
 
-
-
-
     #public methods
     def scrape(self):
-        """
-        Main method of the class
-        Sould call all the other functions
-        """
         soup = self.__connect_and_soupify(self.url)
 
         links_to_visit = self.__get_links_from_same_domain(soup, self.url)
@@ -153,16 +153,5 @@ class Scraper:
             if self.logger.isEnabledFor(logging.DEBUG):
                 self.logger.debug(f"{link}\n")
 
-            image_text = self.__scrape_one_page(link)
-            self.__downloader(image_text)
-
-
-"""
-    TODO
-    the program should:
-        get all links to the same domain
-        follow each link
-        Find every picture on the page
-        Download the image into target
-        Save the next immediately after a picture (if any) and save to metadata
-    """    
+            text_image = self.__scrape_images(link)
+            self.__downloader(text_image)
