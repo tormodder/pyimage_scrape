@@ -6,6 +6,7 @@ def main():
     
     scraper = Scraper("debug")
     scraper.url = url
+    scraper.target = output_dir
 
     scraper.scrape()
 

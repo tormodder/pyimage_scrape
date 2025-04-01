@@ -2,6 +2,7 @@ import requests
 import sys
 import logging
 import os
+from urllib.parse import urlparse
 from bs4 import BeautifulSoup
 from bs4 import XMLParsedAsHTMLWarning
 import warnings
@@ -72,48 +73,65 @@ class Scraper:
         filter away links from same domain
         used to get picture links
         """
+        base_domain = urlparse(url).netloc
         return [
             href for link in soup.find_all("a") 
-            if (href := link.get("href")) and (url not in href)
+            if (href := link.get("href")) and urlparse(href).netloc != base_domain
         ]
 
     #####
     # Page scraping
     ######
     def __scrape_one_page(self, link: str) -> tuple[str, str]:
+        """
+        gets all the specified links on one single page
+        """
+        
 
         soup = self.__connect_and_soupify(link)
         if not soup:
             self.logger.error("xml skpped from scraper function")
-            return ("", "")
+            return None
     
         img = self.__get_links_to_pictures(soup, link)
 
          #TODO find subsequent text
          #      store subsequent text
-        txt = ""
+        txt = [""] * len(img) #placeholder for txt
 
-        return (img, txt)
+
+        return list(zip(img, txt))
 
     
     #TODO: Implement downloader.py
-    def __downloader(self, text_image: tuple[str, str]):
-        img = text_image[0]
-        txt = text_image[1]
-
-        if not img and not txt:
+    def __downloader(self, text_image: list[tuple[str, str]]) -> None:
+        """
+        Downloads a single image, gives it a name and stores it in the target directory
+        :param text_image: tuple of (image_link, name_of_image)
+        """
+        if not text_image:
             self.logger.error("No image or text found.")
-            return
+            return 
         
-        # Remove when txt is found
-        file_name = os.path.basename(img)
-        file_path = os.path.join(self.target, file_name)
 
-        self.logger.info(f"Downloading file {file_name}")
-        
-        img_data = requests.get(img).content
-        with open(file_path, "wb") as f:
-            f.write(img_data)
+        for img, txt in text_image:
+            self.logger.debug(f"Target directory: {self.target}")
+            # Remove when txt is found
+            file_name = os.path.basename(img)
+            file_path = os.path.join(self.target, file_name)
+
+            self.logger.info(f"Downloading file {file_name}")
+
+            try: 
+                img_data = requests.get(img).content
+                with open(file_path, "wb") as f:
+                    f.write(img_data)
+            except MissingSchema:
+                self.logger.error(f"Invalid URL: {img}")
+                continue
+            except Exception as e:
+                self.logger.error(f"Error downloading {img}: {e}")
+                continue
 
 
 
@@ -129,12 +147,14 @@ class Scraper:
         links_to_visit = self.__get_links_from_same_domain(soup, self.url)
         self.logger.info(f"Found {len(links_to_visit)} links to scrape.")
 
+        # Each of the links in links_to_visit is a link to a page
+        # that contains links to images
         for link in links_to_visit:
             if self.logger.isEnabledFor(logging.DEBUG):
                 self.logger.debug(f"{link}\n")
 
-           # (image, text) = self.__scrape_one_page(link)
-            self.__downloader(self.__scrape_one_page(link))
+            image_text = self.__scrape_one_page(link)
+            self.__downloader(image_text)
 
 
 """
