@@ -1,4 +1,4 @@
-from utils.Scraper import Scraper
+from utils import Scraper
 
 def main():
     url = "https://pelleohlinmorbidmayhem.blogspot.com/"
