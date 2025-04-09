@@ -1,7 +1,9 @@
+from __future__ import annotations
 import requests
 import sys
 import logging
 import os
+import re
 from PIL import Image
 import piexif
 from urllib.parse import urlparse
@@ -71,47 +73,58 @@ class Scraper:
             if (href := link.get("href")) and (url in href) and (href != url)
         ]
     
-    def __get_links_to_pictures(self, soup: BeautifulSoup, url: str) -> list[str]:
+    def __get_links_to_pictures(self, soup: BeautifulSoup, url: str) -> list[tuple[str, str]]:
         """
         filter away links from same domain
         used to get picture links
         """
         base_domain = urlparse(url).netloc
-        # TODO: We need to get the text somewhere here
-        # Break up the list comprehension into a for loop
-        return [
-            href for link in soup.find_all("a") 
-            if (href := link.get("href")) and urlparse(href).netloc != base_domain
-        ]
+        image_and_text = []
+        
+        for link in soup.select("a:has(img)"):
+            href = link.get("href")
+            if not href:
+                continue
+            if urlparse(href).netloc != base_domain:
+                img_txt = self.__get_image_text(link)
+                image_and_text.append((href, img_txt))
+                #self.logger.debug(f"Image link: {href}\nImage text: {img_txt}")
+            
+        return image_and_text
+        
+    def __get_image_text(self, link: bs4.element.Tag) -> str:
+        """
+        Find the text associated with the image
+        """
+        text = ""
+
+        potential_text = link.find_next(string=True)
+        potential_text_test = re.sub(r'[^A-Za-z0-9]', '', potential_text.strip())
+        if potential_text_test.isalnum():
+            text = potential_text.strip()
     
-    def __get_image_text(self, soup: BeautifulSoup) -> str:
-        #TODO: Find the text that is associated with the image
-        return 
+        return text 
 
     #####
     # Page scraping
     ######
-    def __scrape_images(self, link: str) -> tuple[str, str]:
+    def __scrape_images(self, link: str) -> tuple[list[tuple[str, str]], str]:
         """
         gets all the specified links on one single page
         """
         soup = self.__connect_and_soupify(link)
         if not soup:
-            self.logger.error("xml skipped from scraper function")
-            return None
+            self.logger.error("xml skipped from __scrape_images")
+            return "","" 
     
+        pagename = soup.find("h3").text if soup.find("h3") else "" 
+        self.logger.debug(f"Page name: {pagename}")
         img_txt = self.__get_links_to_pictures(soup, link)
-        pagename = soup.find("h3").text if soup.find("h3") else "" #TODO: parse <h3> tag for pagename
 
-         #TODO find subsequent text
-         #      store subsequent text
-        txt = [""] * len(img_txt) #placeholder for txt
+        return (img_txt,  pagename.strip())
 
 
-        return list(zip(img_txt, txt, pagename.strip()))
-
-    #TODO: This has to take in list[tuple[str, str, str]] where the last str is the pagename
-    def __downloader(self, text_image: list[tuple[str, str, str]]) -> None:
+    def __downloader(self, text_image: tuple[list[tuple[str, str]], str]) -> None:
         """
         Downloads a single image, gives it a name and stores it in the target directory
         :param text_image: tuple of (image_link, name_of_image)
@@ -158,5 +171,5 @@ class Scraper:
             if self.logger.isEnabledFor(logging.DEBUG):
                 self.logger.debug(f"{link}\n")
 
-            text_image = self.__scrape_images(link)
-            self.__downloader(text_image)
+            text_and_image, page_header = self.__scrape_images(link)
+           # self.__downloader(text_and_image)
