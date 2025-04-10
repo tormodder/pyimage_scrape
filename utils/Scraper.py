@@ -136,24 +136,23 @@ class Scraper:
             return 
         target_dir = self.__setup_target_directory(pagename)
 
-        for img_text in text_image:
-            self.logger.debug(f"Target directory: {self.target}")
-            
-            # Remove when txt is found
-            file_name = os.path.basename(img)
-            file_path = os.path.join(self.target, file_name)
+        for img, text in text_image:
+            self.logger.debug(f"Target directory: {target_dir}")
 
-            self.logger.info(f"Downloading file {file_name}")
+            img_data = Image.open(urlopen(img))
+            img_extension = img_data.format.lower()
+
+            if not text:
+                file_name = pagename + f"_{counter}.{img_extension}"
+                counter += 1
+            else:
+                file_name = text + f"{img_extension}" 
+            
+            self.logger.info(f"Downloading file: {file_name}")
+            file_path = os.path.join(target_dir, file_name)
 
             try: 
-                img_data = Image.open(urlopen(img))
-                # TODO: add text to image metadata
-                #TODO: Create folder based on <h3> tags
-                #TODO: Name picture after folder name: "<h3>_1.jpg", "<h3>_2.jpg" etc.
-
-                with open(file_path, "wb") as f:
-                    f.write(img_data)
-
+                img_data.save(file_path)
             except MissingSchema:
                 self.logger.error(f"Invalid URL: {img}")
                 continue
