@@ -124,18 +124,21 @@ class Scraper:
         return (img_txt,  pagename.strip())
 
 
-    def __downloader(self, text_image: tuple[list[tuple[str, str]], str]) -> None:
+    def __downloader(self, text_image: list[tuple[str, str]], pagename: str) -> None:
         """
         Downloads a single image, gives it a name and stores it in the target directory
         :param text_image: tuple of (image_link, name_of_image)
         """
+        counter = 0
+
         if not text_image:
             self.logger.error("No image or text found.")
             return 
-        
+        target_dir = self.__setup_target_directory(pagename)
 
-        for img, txt in text_image:
+        for img_text in text_image:
             self.logger.debug(f"Target directory: {self.target}")
+            
             # Remove when txt is found
             file_name = os.path.basename(img)
             file_path = os.path.join(self.target, file_name)
@@ -158,6 +161,24 @@ class Scraper:
                 self.logger.error(f"Error downloading {img}: {e}")
                 continue
 
+    def __setup_target_directory(self, pagename: str) -> str:
+        """
+        Create a target directory if it doesn't exist.
+        Create a subdirectory for the page name.
+        :param pagename: name of the page to create a directory for
+        """
+        if not os.path.exists(self.target):
+            os.makedirs(self.target)
+            self.logger.info(f"Created target directory: {self.target}")
+
+        # Create a subdirectory for the page name
+        page_directory = os.path.join(self.target, pagename)
+        if not os.path.exists(page_directory):
+            os.makedirs(page_directory)
+            self.logger.info(f"Created subdirectory: {page_directory}")
+
+        return page_directory
+
     #public methods
     def scrape(self):
         soup = self.__connect_and_soupify(self.url)
@@ -171,5 +192,5 @@ class Scraper:
             if self.logger.isEnabledFor(logging.DEBUG):
                 self.logger.debug(f"{link}\n")
 
-            text_and_image, page_header = self.__scrape_images(link)
-           # self.__downloader(text_and_image)
+            text_and_image, pagename = self.__scrape_images(link)
+            self.__downloader(text_and_image, pagename)
