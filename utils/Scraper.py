@@ -138,8 +138,14 @@ class Scraper:
 
         for img, text in text_image:
             self.logger.debug(f"Target directory: {target_dir}")
+            
+            try:
+                img_data = Image.open(urlopen(img))
+            except Exception as e:
+                self.logger.error(f"Error opening image {img}: {e}")
+                continue
 
-            img_data = Image.open(urlopen(img))
+
             img_extension = img_data.format.lower()
 
             if not text:
@@ -153,9 +159,6 @@ class Scraper:
 
             try: 
                 img_data.save(file_path)
-            except MissingSchema:
-                self.logger.error(f"Invalid URL: {img}")
-                continue
             except Exception as e:
                 self.logger.error(f"Error downloading {img}: {e}")
                 continue
